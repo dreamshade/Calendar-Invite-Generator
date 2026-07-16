@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INVITE LEDGER — event link generator</title>
+<style>
+  :root{
+    --ink:#101216; --panel:#16191f; --panel2:#1b1f26;
+    --rule:#2a2f38; --rule-dim:#20242c;
+    --text:#c9ced6; --dim:#78808e; --faint:#4c525d;
+    --brass:#d4a94f; --brass-dim:#8a7136; --ok:#7fb069; --err:#c96a5a;
+    --mono:ui-monospace,"Cascadia Mono","JetBrains Mono","Fira Mono",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--ink);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5}
+  body{padding:20px;max-width:920px;margin:0 auto}
+  header{border:1px solid var(--rule);border-bottom:3px double var(--rule);padding:10px 14px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+  header h1{font-size:13px;font-weight:700;letter-spacing:.22em;color:var(--brass)}
+  header .sub{color:var(--faint);font-size:11px;letter-spacing:.08em}
+  main{display:grid;grid-template-columns:3fr 2fr;border:1px solid var(--rule);border-top:0}
+  @media(max-width:760px){main{grid-template-columns:1fr}}
+  section{padding:14px}
+  .col-l{border-right:1px solid var(--rule)}
+  @media(max-width:760px){.col-l{border-right:0;border-bottom:1px solid var(--rule)}}
+  .sec-label{font-size:10px;letter-spacing:.25em;color:var(--faint);border-bottom:1px solid var(--rule-dim);padding-bottom:6px;margin-bottom:12px;display:flex;justify-content:space-between}
+  .sec-label .tz{color:var(--dim);letter-spacing:.04em}
+  .row{display:flex;gap:10px;margin-bottom:10px}
+  .field{flex:1;display:flex;flex-direction:column;gap:3px}
+  label{font-size:10px;letter-spacing:.18em;color:var(--dim)}
+  input,textarea{background:var(--panel);border:1px solid var(--rule);color:var(--text);font-family:var(--mono);font-size:13px;padding:6px 8px;border-radius:0;width:100%}
+  input:focus,textarea:focus{outline:1px solid var(--brass);outline-offset:0;border-color:var(--brass-dim)}
+  textarea{resize:vertical;min-height:56px}
+  input[type=checkbox]{width:auto;accent-color:var(--brass)}
+  .check{flex-direction:row;align-items:center;gap:7px;flex:0 0 auto}
+  .check label{letter-spacing:.12em;cursor:pointer}
+  input:disabled{opacity:.35}
+  input.invalid{border-color:var(--err)}
+  #titleErr{font-size:10px;letter-spacing:.12em;color:var(--err);min-height:14px}
+  .actions{display:flex;flex-direction:column;gap:8px}
+  .btn{background:var(--panel);border:1px solid var(--rule);color:var(--text);font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:10px 12px;cursor:pointer;border-radius:0;text-align:left;display:flex;justify-content:space-between;align-items:center}
+  .btn::after{content:attr(data-glyph);color:var(--faint);font-size:10px;letter-spacing:0}
+  .btn:hover:not(:disabled){border-color:var(--brass-dim);color:var(--brass)}
+  .btn:hover:not(:disabled)::after{color:var(--brass-dim)}
+  .btn:focus-visible{outline:1px solid var(--brass)}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.primary{border-color:var(--brass-dim);color:var(--brass)}
+  .btn.primary:hover:not(:disabled){background:var(--panel2)}
+  #detailsBtn{margin-top:14px;width:100%}
+  #details{display:none;margin-top:10px}
+  #details.open{display:block}
+  pre#icsPreview{background:var(--panel2);border:1px solid var(--rule-dim);padding:10px;font-size:11px;line-height:1.55;color:var(--dim);overflow:auto;white-space:pre;max-height:220px;margin-bottom:8px}
+  pre#icsPreview .k{color:var(--faint)}
+  pre#icsPreview .v{color:var(--text)}
+  .details-row{display:flex;gap:8px}
+  .btn.small{padding:6px 10px;font-size:10px;flex:1}
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);background:var(--panel2);border:1px solid var(--ok);color:var(--ok);font-size:11px;letter-spacing:.2em;padding:8px 18px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{border:1px solid var(--rule);border-top:0;padding:8px 14px;font-size:10px;color:var(--faint);letter-spacing:.06em}
+  footer .warn{color:var(--err)}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>INVITE LEDGER</h1>
+  <span class="sub">one-way event links · no server · no account</span>
+</header>
+
+<main>
+  <section class="col-l">
+    <div class="sec-label"><span>ENTRY</span><span class="tz" id="tzLabel"></span></div>
+
+    <div class="row"><div class="field">
+      <label for="title">TITLE</label>
+      <input id="title" type="text" placeholder="event title (required)" autocomplete="off">
+      <span id="titleErr"></span>
+    </div></div>
+
+    <div class="row">
+      <div class="field"><label for="date">DATE</label><input id="date" type="date"></div>
+      <div class="field check"><input id="allday" type="checkbox"><label for="allday">ALL-DAY</label></div>
+    </div>
+
+    <div class="row">
+      <div class="field"><label for="start">START</label><input id="start" type="time" value="14:00"></div>
+      <div class="field"><label for="end">END</label><input id="end" type="time" value="14:30"></div>
+    </div>
+
+    <div class="row"><div class="field">
+      <label for="loc">LOCATION</label>
+      <input id="loc" type="text" placeholder="address, room, or meeting URL" autocomplete="off">
+    </div></div>
+
+    <div class="row"><div class="field">
+      <label for="desc">DETAILS</label>
+      <textarea id="desc" placeholder="agenda, notes, dial-in…"></textarea>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="sec-label"><span>ISSUE</span></div>
+    <div class="actions">
+      <button class="btn primary" id="emailBtn" data-glyph="↗">EMAIL CALENDAR LINKS</button>
+      <button class="btn primary" id="evBtn" data-glyph="⧉">EVENT PAGE LINK</button>
+      <button class="btn" id="gBtn" data-glyph="⧉">GOOGLE CALENDAR LINK</button>
+      <button class="btn" id="oBtn" data-glyph="⧉">OUTLOOK CALENDAR LINK</button>
+      <button class="btn" id="yBtn" data-glyph="⧉">YAHOO CALENDAR LINK</button>
+    </div>
+
+    <button class="btn" id="detailsBtn" data-glyph="▸">SHOW DETAILS</button>
+    <div id="details">
+      <pre id="icsPreview"></pre>
+      <div class="details-row">
+        <button class="btn small" id="dlBtn">DOWNLOAD .ICS</button>
+        <button class="btn small" id="rawBtn">COPY RAW</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="foot">
+  EVENT PAGE LINK points to e.html beside this file — recipients get the .ics and calendar buttons there.
+</footer>
+
+<div id="toast" role="status">LINK COPIED</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  $("tzLabel").textContent = tz;
+
+  if(location.protocol === "file:"){
+    $("foot").innerHTML = '<span class="warn">RUNNING FROM file:// — event links will only work on this machine. Host both files (e.g. GitHub Pages) to share them.</span>';
+  }
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  $("date").value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+  function localParts(dateStr, timeStr){
+    const [y,m,d] = dateStr.split("-").map(Number);
+    const [hh,mm] = timeStr.split(":").map(Number);
+    return new Date(y, m-1, d, hh, mm, 0);
+  }
+  function fmtUTC(dt){
+    return dt.getUTCFullYear()+pad(dt.getUTCMonth()+1)+pad(dt.getUTCDate())+"T"+
+           pad(dt.getUTCHours())+pad(dt.getUTCMinutes())+"00Z";
+  }
+  function fmtLocalCompact(dt){
+    return dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+"T"+
+           pad(dt.getHours())+pad(dt.getMinutes())+"00";
+  }
+  function fmtLocalISO(dt){
+    return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+
+           pad(dt.getHours())+":"+pad(dt.getMinutes())+":00";
+  }
+  function fmtDateOnly(dateStr){ return dateStr.replaceAll("-",""); }
+  function nextDay(dateStr){
+    const [y,m,d] = dateStr.split("-").map(Number);
+    const dt = new Date(y, m-1, d+1);
+    return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate());
+  }
+
+  function icsEscape(s){
+    return s.replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+  }
+  function fold(line){
+    if(line.length <= 74) return line;
+    let out = line.slice(0,74), rest = line.slice(74);
+    while(rest.length){ out += "\r\n " + rest.slice(0,73); rest = rest.slice(73); }
+    return out;
+  }
+
+  function readForm(){
+    return {
+      title: $("title").value.trim(),
+      date:  $("date").value,
+      start: $("start").value,
+      end:   $("end").value,
+      allday:$("allday").checked,
+      loc:   $("loc").value.trim(),
+      desc:  $("desc").value.trim()
+    };
+  }
+
+  function buildICS(f){
+    const stamp = fmtUTC(new Date());
+    const uid = stamp + "-" + Math.random().toString(36).slice(2,10) + "@invite-ledger";
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Invite Ledger//EN","CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+stamp];
+    if(f.allday){
+      lines.push("DTSTART;VALUE=DATE:"+fmtDateOnly(f.date));
+      lines.push("DTEND;VALUE=DATE:"+fmtDateOnly(nextDay(f.date)));
+    }else{
+      lines.push("DTSTART:"+fmtUTC(localParts(f.date,f.start)));
+      lines.push("DTEND:"+fmtUTC(localParts(f.date,f.end)));
+    }
+    lines.push("SUMMARY:"+icsEscape(f.title));
+    if(f.loc)  lines.push("LOCATION:"+icsEscape(f.loc));
+    if(f.desc) lines.push("DESCRIPTION:"+icsEscape(f.desc));
+    lines.push("END:VEVENT","END:VCALENDAR");
+    return lines.map(fold).join("\r\n");
+  }
+
+  function buildEventLink(f){
+    const u = new URL("e.html", location.href);
+    const p = u.searchParams;
+    p.set("t", f.title);
+    if(f.allday){
+      p.set("a","1");
+      p.set("st", fmtDateOnly(f.date));
+    }else{
+      p.set("st", fmtUTC(localParts(f.date,f.start)));
+      p.set("et", fmtUTC(localParts(f.date,f.end)));
+    }
+    if(f.loc)  p.set("l", f.loc);
+    if(f.desc) p.set("n", f.desc);
+    return u.toString();
+  }
+
+  function buildLinks(f){
+    const enc = encodeURIComponent;
+    let g, o, y;
+    if(f.allday){
+      const d1 = fmtDateOnly(f.date), d2 = fmtDateOnly(nextDay(f.date));
+      g = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${enc(f.title)}&dates=${d1}/${d2}`;
+      o = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${enc(f.title)}&startdt=${f.date}&enddt=${nextDay(f.date)}&allday=true`;
+      y = `https://calendar.yahoo.com/?v=60&title=${enc(f.title)}&st=${d1}&dur=allday`;
+    }else{
+      const s = localParts(f.date,f.start), e = localParts(f.date,f.end);
+      g = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${enc(f.title)}&dates=${fmtLocalCompact(s)}/${fmtLocalCompact(e)}&ctz=${enc(tz)}`;
+      o = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${enc(f.title)}&startdt=${enc(fmtLocalISO(s))}&enddt=${enc(fmtLocalISO(e))}`;
+      y = `https://calendar.yahoo.com/?v=60&title=${enc(f.title)}&st=${fmtUTC(s)}&et=${fmtUTC(e)}`;
+    }
+    if(f.loc){ g+="&location="+enc(f.loc); o+="&location="+enc(f.loc); y+="&in_loc="+enc(f.loc); }
+    if(f.desc){ g+="&details="+enc(f.desc); o+="&body="+enc(f.desc); y+="&desc="+enc(f.desc); }
+    return {g,o,y};
+  }
+
+  function humanWhen(f){
+    if(!f.date) return "";
+    const d = localParts(f.date, f.allday ? "00:00" : f.start);
+    const day = d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+    return f.allday ? day+" (all day)" : `${day}, ${f.start}\u2013${f.end} (${tz})`;
+  }
+
+  function slug(t){ return t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "event"; }
+  function escHTML(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+  let state = null;
+
+  function validate(f){
+    const ok = !!f.title;
+    $("title").classList.toggle("invalid", !ok);
+    $("titleErr").textContent = ok ? "" : "ERR — TITLE REQUIRED";
+    ["emailBtn","evBtn","gBtn","oBtn","yBtn","dlBtn","rawBtn"].forEach(id=>$(id).disabled = !ok);
+    return ok;
+  }
+
+  function render(){
+    const f = readForm();
+    $("start").disabled = $("end").disabled = f.allday;
+    if(!validate(f) || !f.date){ state = null; $("icsPreview").textContent = ""; return; }
+
+    state = {ics: buildICS(f), links: buildLinks(f), ev: buildEventLink(f), f};
+
+    $("icsPreview").innerHTML = state.ics.split("\r\n").map(l=>{
+      const i = l.indexOf(":");
+      if(i<0 || l.startsWith(" ")) return `<span class="v">${escHTML(l)}</span>`;
+      return `<span class="k">${escHTML(l.slice(0,i+1))}</span><span class="v">${escHTML(l.slice(i+1))}</span>`;
+    }).join("\n");
+  }
+
+  let toastTimer = null;
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove("show"), 1400);
+  }
+  async function copyLink(url){
+    try{ await navigator.clipboard.writeText(url); toast("LINK COPIED"); }
+    catch(e){ window.prompt("Copy:", url); }
+  }
+
+  $("evBtn").addEventListener("click", ()=> state && copyLink(state.ev));
+  $("gBtn").addEventListener("click", ()=> state && copyLink(state.links.g));
+  $("oBtn").addEventListener("click", ()=> state && copyLink(state.links.o));
+  $("yBtn").addEventListener("click", ()=> state && copyLink(state.links.y));
+
+  $("emailBtn").addEventListener("click", ()=>{
+    if(!state) return;
+    const f = state.f, L = state.links;
+    const body = `${f.title}\n${humanWhen(f)}${f.loc ? "\nWhere: "+f.loc : ""}`+
+      `\n\nAdd to your calendar:\n${state.ev}`+
+      `\n\nOr add directly:\nGoogle: ${L.g}`;
+    window.location.href = "mailto:?subject="+encodeURIComponent("Invite: "+f.title)+
+      "&body="+encodeURIComponent(body);
+  });
+
+  $("dlBtn").addEventListener("click", ()=>{
+    if(!state) return;
+    const blob = new Blob([state.ics], {type:"text/calendar;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = slug(state.f.title)+".ics";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(".ICS DOWNLOADED");
+  });
+  $("rawBtn").addEventListener("click", async ()=>{
+    if(!state) return;
+    try{ await navigator.clipboard.writeText(state.ics); toast("RECORD COPIED"); }
+    catch(e){ window.prompt("Copy:", state.ics); }
+  });
+
+  $("detailsBtn").addEventListener("click", ()=>{
+    const open = $("details").classList.toggle("open");
+    $("detailsBtn").textContent = open ? "HIDE DETAILS" : "SHOW DETAILS";
+    $("detailsBtn").dataset.glyph = open ? "\u25BE" : "\u25B8";
+  });
+
+  ["title","date","start","end","allday","loc","desc"].forEach(id=>{
+    $(id).addEventListener("input", render);
+    $(id).addEventListener("change", render);
+  });
+  render();
+})();
+</script>
+</body>
+</html>
