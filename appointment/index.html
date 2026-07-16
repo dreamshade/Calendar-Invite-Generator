@@ -54,10 +54,31 @@
   document.getElementById("tzHead").textContent = tz;
   const body = document.getElementById("body");
 
-  const title = (q.get("t")||"").trim();
-  const st = q.get("st")||"", et = q.get("et")||"";
-  const allday = q.get("a") === "1";
-  const loc = q.get("l")||"", desc = q.get("n")||"";
+  function fromB64url(str){
+    str = str.replace(/-/g,"+").replace(/_/g,"/");
+    while(str.length % 4) str += "=";
+    const bin = atob(str);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  let title="", st="", et="", allday=false, loc="", desc="";
+  const token = q.get("d");
+  if(token){
+    try{
+      const ev = fromB64url(token);
+      title = String(ev.t||"").trim();
+      st = String(ev.st||""); et = String(ev.et||"");
+      allday = ev.a === 1 || ev.a === "1";
+      loc = String(ev.l||""); desc = String(ev.n||"");
+    }catch(e){ /* falls through to validation error */ }
+  }else{
+    // legacy plain-param links
+    title = (q.get("t")||"").trim();
+    st = q.get("st")||""; et = q.get("et")||"";
+    allday = q.get("a") === "1";
+    loc = q.get("l")||""; desc = q.get("n")||"";
+  }
 
   const stampRe = /^\d{8}T\d{6}Z$/, dateRe = /^\d{8}$/;
   const valid = title && (allday ? dateRe.test(st) : (stampRe.test(st) && stampRe.test(et)));

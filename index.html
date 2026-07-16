@@ -196,19 +196,26 @@
     return lines.map(fold).join("\r\n");
   }
 
+  function b64url(obj){
+    const bytes = new TextEncoder().encode(JSON.stringify(obj));
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+
   function buildEventLink(f){
-    const u = new URL("appointment/", location.href);
-    const p = u.searchParams;
-    p.set("t", f.title);
+    const ev = { t: f.title };
     if(f.allday){
-      p.set("a","1");
-      p.set("st", fmtDateOnly(f.date));
+      ev.a = 1;
+      ev.st = fmtDateOnly(f.date);
     }else{
-      p.set("st", fmtUTC(localParts(f.date,f.start)));
-      p.set("et", fmtUTC(localParts(f.date,f.end)));
+      ev.st = fmtUTC(localParts(f.date,f.start));
+      ev.et = fmtUTC(localParts(f.date,f.end));
     }
-    if(f.loc)  p.set("l", f.loc);
-    if(f.desc) p.set("n", f.desc);
+    if(f.loc)  ev.l = f.loc;
+    if(f.desc) ev.n = f.desc;
+    const u = new URL("appointment/", location.href);
+    u.search = "d=" + b64url(ev);
     return u.toString();
   }
 
