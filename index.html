@@ -197,7 +197,7 @@
   }
 
   function buildEventLink(f){
-    const u = new URL("e.html", location.href);
+    const u = new URL("appointment/", location.href);
     const p = u.searchParams;
     p.set("t", f.title);
     if(f.allday){
@@ -285,10 +285,9 @@
 
   $("emailBtn").addEventListener("click", ()=>{
     if(!state) return;
-    const f = state.f, L = state.links;
+    const f = state.f;
     const body = `${f.title}\n${humanWhen(f)}${f.loc ? "\nWhere: "+f.loc : ""}${f.desc ? "\n\n"+f.desc : ""}`+
-      `\n\nAdd to your calendar:\n${state.ev}`+
-      `\n\nOr add directly:\nGoogle: ${L.g}`;
+      `\n\nAdd to your calendar:\n${state.ev}`;
     window.location.href = "mailto:?subject="+encodeURIComponent("Invite: "+f.title)+
       "&body="+encodeURIComponent(body);
   });
