@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'">
+<title>Hayne Photographers — Appointment</title>
+<style>
+  :root{
+    --ink:#101216; --panel:#16191f; --panel2:#1b1f26;
+    --rule:#2a2f38; --rule-dim:#20242c;
+    --text:#c9ced6; --dim:#78808e; --faint:#4c525d;
+    --brass:#d4a94f; --brass-dim:#8a7136; --err:#c96a5a;
+    --mono:ui-monospace,"Cascadia Mono","JetBrains Mono","Fira Mono",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--ink);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.55}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{width:100%;max-width:460px;border:1px solid var(--rule)}
+  .card-head{border-bottom:3px double var(--rule);padding:10px 16px;font-size:10px;letter-spacing:.25em;color:var(--faint);display:flex;justify-content:space-between}
+  .card-body{padding:18px 16px}
+  h1{font-size:17px;font-weight:700;color:var(--brass);letter-spacing:.03em;margin-bottom:12px;overflow-wrap:break-word}
+  .meta{border-top:1px solid var(--rule-dim);border-bottom:1px solid var(--rule-dim);padding:10px 0;margin-bottom:16px}
+  .meta-row{display:flex;gap:12px;padding:3px 0}
+  .meta-row .k{flex:0 0 62px;font-size:10px;letter-spacing:.18em;color:var(--dim);padding-top:2px}
+  .meta-row .v{flex:1;overflow-wrap:break-word;white-space:pre-wrap}
+  .meta-row .v .sub{color:var(--faint);font-size:11px}
+  .actions{display:flex;flex-direction:column;gap:8px}
+  .btn{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid var(--rule);color:var(--text);font-family:var(--mono);font-size:11px;letter-spacing:.16em;padding:11px 12px;cursor:pointer;border-radius:0;text-decoration:none}
+  .btn::after{content:attr(data-glyph);color:var(--faint);font-size:10px;letter-spacing:0}
+  .btn:hover{border-color:var(--brass-dim);color:var(--brass)}
+  .btn:focus-visible{outline:1px solid var(--brass)}
+  .btn.primary{border-color:var(--brass-dim);color:var(--brass)}
+  .btn.primary:hover{background:var(--panel2)}
+  .error{color:var(--err);font-size:12px;letter-spacing:.1em;text-align:center;padding:30px 16px}
+  footer{border-top:1px solid var(--rule-dim);padding:8px 16px;font-size:10px;color:var(--faint);letter-spacing:.06em}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-head"><span>INVITATION</span><span id="tzHead"></span></div>
+  <div class="card-body" id="body"></div>
+  <footer>Times shown in your local timezone.</footer>
+</div>
+
+<script>
+(function(){
+  const q = new URLSearchParams(location.search);
+  const pad = n => String(n).padStart(2,"0");
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  document.getElementById("tzHead").textContent = tz;
+  const body = document.getElementById("body");
+
+  const title = (q.get("t")||"").trim();
+  const st = q.get("st")||"", et = q.get("et")||"";
+  const allday = q.get("a") === "1";
+  const loc = q.get("l")||"", desc = q.get("n")||"";
+
+  const stampRe = /^\d{8}T\d{6}Z$/, dateRe = /^\d{8}$/;
+  const valid = title && (allday ? dateRe.test(st) : (stampRe.test(st) && stampRe.test(et)));
+  if(!valid){
+    body.innerHTML = '<div class="error">ERR — INVALID OR INCOMPLETE EVENT LINK</div>';
+    return;
+  }
+
+  function parseStamp(s){ // 20260721T180000Z -> Date
+    return new Date(Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8),
+                             +s.slice(9,11), +s.slice(11,13), +s.slice(13,15)));
+  }
+  function parseDateOnly(s){ return {y:+s.slice(0,4), m:+s.slice(4,6), d:+s.slice(6,8)}; }
+  function nextDayStr(s){
+    const p = parseDateOnly(s);
+    const dt = new Date(p.y, p.m-1, p.d+1);
+    return dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate());
+  }
+
+  let whenHTML, sD=null, eD=null, endDateStr=null;
+  if(allday){
+    const p = parseDateOnly(st);
+    const local = new Date(p.y, p.m-1, p.d);
+    whenHTML = escHTML(local.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"}))
+             + ' <span class="sub">(all day)</span>';
+    endDateStr = nextDayStr(st);
+  }else{
+    sD = parseStamp(st); eD = parseStamp(et);
+    const day = sD.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+    const t1 = sD.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+    const t2 = eD.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+    whenHTML = escHTML(day) + "<br>" + escHTML(t1+" \u2013 "+t2);
+  }
+
+  function escHTML(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+  function icsEscape(s){
+    return s.replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+  }
+  function fold(line){
+    if(line.length <= 74) return line;
+    let out = line.slice(0,74), rest = line.slice(74);
+    while(rest.length){ out += "\r\n " + rest.slice(0,73); rest = rest.slice(73); }
+    return out;
+  }
+  function fmtUTC(dt){
+    return dt.getUTCFullYear()+pad(dt.getUTCMonth()+1)+pad(dt.getUTCDate())+"T"+
+           pad(dt.getUTCHours())+pad(dt.getUTCMinutes())+pad(dt.getUTCSeconds())+"Z";
+  }
+
+  function buildICS(){
+    const stamp = fmtUTC(new Date());
+    const uid = st + "-" + title.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,16) + "@invite-ledger";
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Invite Ledger//EN","CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+stamp];
+    if(allday){
+      lines.push("DTSTART;VALUE=DATE:"+st);
+      lines.push("DTEND;VALUE=DATE:"+endDateStr);
+    }else{
+      lines.push("DTSTART:"+st);
+      lines.push("DTEND:"+et);
+    }
+    lines.push("SUMMARY:"+icsEscape(title));
+    if(loc)  lines.push("LOCATION:"+icsEscape(loc));
+    if(desc) lines.push("DESCRIPTION:"+icsEscape(desc));
+    lines.push("END:VEVENT","END:VCALENDAR");
+    return lines.map(fold).join("\r\n");
+  }
+
+  function calLinks(){
+    const enc = encodeURIComponent;
+    let g,o,y;
+    if(allday){
+      g = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${enc(title)}&dates=${st}/${endDateStr}`;
+      const iso = s => s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+      o = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${enc(title)}&startdt=${iso(st)}&enddt=${iso(endDateStr)}&allday=true`;
+      y = `https://calendar.yahoo.com/?v=60&title=${enc(title)}&st=${st}&dur=allday`;
+    }else{
+      g = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${enc(title)}&dates=${st}/${et}`;
+      const isoZ = d => d.toISOString().replace(/\.\d{3}Z$/,"Z");
+      o = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${enc(title)}&startdt=${enc(isoZ(sD))}&enddt=${enc(isoZ(eD))}`;
+      y = `https://calendar.yahoo.com/?v=60&title=${enc(title)}&st=${st}&et=${et}`;
+    }
+    if(loc){ g+="&location="+enc(loc); o+="&location="+enc(loc); y+="&in_loc="+enc(loc); }
+    if(desc){ g+="&details="+enc(desc); o+="&body="+enc(desc); y+="&desc="+enc(desc); }
+    return {g,o,y};
+  }
+
+  const L = calLinks();
+  let html = "<h1>"+escHTML(title)+"</h1>";
+  html += '<div class="meta">';
+  html += '<div class="meta-row"><span class="k">WHEN</span><span class="v">'+whenHTML+'</span></div>';
+  if(loc)  html += '<div class="meta-row"><span class="k">WHERE</span><span class="v">'+escHTML(loc)+'</span></div>';
+  if(desc) html += '<div class="meta-row"><span class="k">NOTES</span><span class="v">'+escHTML(desc)+'</span></div>';
+  html += '</div>';
+  html += '<div class="actions">'+
+    '<button class="btn primary" id="icsBtn" data-glyph=".ics">ADD TO CALENDAR</button>'+
+    '<a class="btn" data-glyph="↗" target="_blank" rel="noopener" href="'+L.g.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">GOOGLE CALENDAR</a>'+
+    '<a class="btn" data-glyph="↗" target="_blank" rel="noopener" href="'+L.o.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">OUTLOOK</a>'+
+    '<a class="btn" data-glyph="↗" target="_blank" rel="noopener" href="'+L.y.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">YAHOO CALENDAR</a>'+
+    '</div>';
+  body.innerHTML = html;
+
+  document.getElementById("icsBtn").addEventListener("click", ()=>{
+    const blob = new Blob([buildICS()], {type:"text/calendar;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"event")+".ics";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+})();
+</script>
+</body>
+</html>
