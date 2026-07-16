@@ -286,7 +286,7 @@
   $("emailBtn").addEventListener("click", ()=>{
     if(!state) return;
     const f = state.f, L = state.links;
-    const body = `${f.title}\n${humanWhen(f)}${f.loc ? "\nWhere: "+f.loc : ""}`+
+    const body = `${f.title}\n${humanWhen(f)}${f.loc ? "\nWhere: "+f.loc : ""}${f.desc ? "\n\n"+f.desc : ""}`+
       `\n\nAdd to your calendar:\n${state.ev}`+
       `\n\nOr add directly:\nGoogle: ${L.g}`;
     window.location.href = "mailto:?subject="+encodeURIComponent("Invite: "+f.title)+
