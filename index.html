@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>INVITE LEDGER — event link generator</title>
 <style>
   :root{
@@ -17,7 +20,6 @@
   body{padding:20px;max-width:920px;margin:0 auto}
   header{border:1px solid var(--rule);border-bottom:3px double var(--rule);padding:10px 14px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
   header h1{font-size:13px;font-weight:700;letter-spacing:.22em;color:var(--brass)}
-  header .sub{color:var(--faint);font-size:11px;letter-spacing:.08em}
   main{display:grid;grid-template-columns:3fr 2fr;border:1px solid var(--rule);border-top:0}
   @media(max-width:760px){main{grid-template-columns:1fr}}
   section{padding:14px}
@@ -56,8 +58,6 @@
   .btn.small{padding:6px 10px;font-size:10px;flex:1}
   #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);background:var(--panel2);border:1px solid var(--ok);color:var(--ok);font-size:11px;letter-spacing:.2em;padding:8px 18px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  footer{border:1px solid var(--rule);border-top:0;padding:8px 14px;font-size:10px;color:var(--faint);letter-spacing:.06em}
-  footer .warn{color:var(--err)}
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -65,7 +65,6 @@
 
 <header>
   <h1>INVITE LEDGER</h1>
-  <span class="sub">one-way event links · no server · no account</span>
 </header>
 
 <main>
@@ -120,10 +119,6 @@
   </section>
 </main>
 
-<footer id="foot">
-  EVENT PAGE LINK points to e.html beside this file — recipients get the .ics and calendar buttons there.
-</footer>
-
 <div id="toast" role="status">LINK COPIED</div>
 
 <script>
@@ -131,10 +126,6 @@
   const $ = id => document.getElementById(id);
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   $("tzLabel").textContent = tz;
-
-  if(location.protocol === "file:"){
-    $("foot").innerHTML = '<span class="warn">RUNNING FROM file:// — event links will only work on this machine. Host both files (e.g. GitHub Pages) to share them.</span>';
-  }
 
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
